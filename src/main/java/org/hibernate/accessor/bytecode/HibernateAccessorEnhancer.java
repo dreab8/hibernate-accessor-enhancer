@@ -4,6 +4,7 @@
  */
 package org.hibernate.accessor.bytecode;
 
+import org.jboss.logging.Logger;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 
@@ -20,6 +21,8 @@ import java.util.stream.Stream;
  * for persistent fields.
  */
 public class HibernateAccessorEnhancer {
+
+    private static final Logger LOG = Logger.getLogger( HibernateAccessorEnhancer.class );
 
     private final boolean allFields;
 
@@ -62,7 +65,7 @@ public class HibernateAccessorEnhancer {
         }
 
         if (inputPath == null || outputPath == null) {
-            System.err.println("Error: Both --input and --output are required");
+            LOG.error( "Both --input and --output are required" );
             printUsage();
             System.exit(1);
         }
@@ -72,7 +75,7 @@ public class HibernateAccessorEnhancer {
             Path output = Paths.get(outputPath);
 
             if (!Files.exists(input)) {
-                System.err.println("Error: Input path does not exist: " + inputPath);
+                LOG.errorf( "Input path does not exist: %s", inputPath );
                 System.exit(1);
             }
 
@@ -80,28 +83,26 @@ public class HibernateAccessorEnhancer {
             Files.createDirectories(output);
 
             if (allFields) {
-                System.out.println("Mode: Processing ALL fields (not just JPA-annotated)");
+                LOG.info( "Mode: Processing ALL fields (not just JPA-annotated)" );
             } else {
-                System.out.println("Mode: Processing only JPA-annotated fields");
+                LOG.info( "Mode: Processing only JPA-annotated fields" );
             }
 
             HibernateAccessorEnhancer enhancer = new HibernateAccessorEnhancer( allFields);
             enhancer.processDirectory(input, output);
 
         } catch (IOException e) {
-            System.err.println("Error processing files: " + e.getMessage());
-            e.printStackTrace();
+            LOG.error( "Error processing files", e );
             System.exit(1);
         }
     }
 
     private static void printUsage() {
-        System.out.println("Usage: java -jar hibernate-accessor-enhancer.jar --input <path> --output <path> [--all-fields]");
-        System.out.println();
-        System.out.println("Options:");
-        System.out.println("  --input       Directory containing .class files to enhance");
-        System.out.println("  --output      Directory where enhanced .class files will be written");
-        System.out.println("  --all-fields  Process ALL fields (default: only JPA-annotated fields)");
+        LOG.info( "Usage: java -jar hibernate-accessor-enhancer.jar --input <path> --output <path> [--all-fields]" );
+        LOG.info( "Options:" );
+        LOG.info( "  --input       Directory containing .class files to enhance" );
+        LOG.info( "  --output      Directory where enhanced .class files will be written" );
+        LOG.info( "  --all-fields  Process ALL fields (default: only JPA-annotated fields)" );
     }
 
     /**
@@ -118,7 +119,7 @@ public class HibernateAccessorEnhancer {
         }
 
         if (classFiles.isEmpty()) {
-            System.out.println("No .class files found in " + inputDir);
+            LOG.infof( "No .class files found in %s", inputDir );
             return;
         }
 
@@ -152,7 +153,7 @@ public class HibernateAccessorEnhancer {
                         Files.write(innerClassFile, innerClass.getBytecode());
                     }
 
-                    System.out.println("Enhanced: " + relativePath + " (+" + result.getInnerClasses().size() + " accessors)");
+                    LOG.infof( "Enhanced: %s (+%d accessors)", relativePath, result.getInnerClasses().size() );
                 } else {
                     // Copy unchanged
                     Path relativePath = inputDir.relativize(classFile);
@@ -162,16 +163,12 @@ public class HibernateAccessorEnhancer {
                 }
 
             } catch (Exception e) {
-                System.err.println("Error processing " + classFile + ": " + e.getMessage());
-                e.printStackTrace();
+                LOG.errorf( e, "Error processing %s", classFile );
             }
         }
 
-        System.out.println();
-        System.out.println("Summary:");
-        System.out.println("  Processed:      " + processedCount + " classes");
-        System.out.println("  Enhanced:       " + enhancedCount + " classes");
-        System.out.println("  Generated:      " + innerClassCount + " accessor writers");
+        LOG.infof( "Summary: Processed %d classes, Enhanced %d classes, Generated %d accessor writers",
+                processedCount, enhancedCount, innerClassCount );
     }
 
     /**
