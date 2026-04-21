@@ -43,6 +43,9 @@ public class InnerClassGenerator implements Opcodes {
                 new String[]{WRITER_INTERFACE}
         );
 
+        // Declare nest host so the inner class can access private fields of the outer class
+        cw.visitNestHost(outerClassName);
+
         // Declare this as inner class of outer class
         String simpleInnerName = innerClassName.substring(innerClassName.lastIndexOf('$') + 1);
         cw.visitInnerClass(
@@ -221,6 +224,9 @@ public class InnerClassGenerator implements Opcodes {
                 "java/lang/Object",
                 new String[]{READER_INTERFACE}
         );
+
+        // Declare nest host so the inner class can access private fields of the outer class
+        cw.visitNestHost(outerClassName);
 
         // Declare this as inner class of outer class
         String simpleInnerName = innerClassName.substring(innerClassName.lastIndexOf('$') + 1);

@@ -22,6 +22,7 @@ public class AccessorWriterClassVisitor extends ClassVisitor {
     private final List<FieldMetadata> persistentFields;
     private String className;
     private final List<InnerClassInfo> innerClasses = new ArrayList<>();
+    private boolean isNestMember;
 
     public AccessorWriterClassVisitor(ClassVisitor delegate, List<FieldMetadata> persistentFields) {
         super(Opcodes.ASM9, delegate);
@@ -33,6 +34,14 @@ public class AccessorWriterClassVisitor extends ClassVisitor {
                       String superName, String[] interfaces) {
         this.className = name;
         super.visit(version, access, name, signature, superName, interfaces);
+    }
+
+    @Override
+    public void visitNestHost(String nestHost) {
+        // If the class already declares a nest host, it is a nest member itself
+        // and cannot declare its own nest members
+        isNestMember = true;
+        super.visitNestHost(nestHost);
     }
 
     @Override
@@ -50,6 +59,11 @@ public class AccessorWriterClassVisitor extends ClassVisitor {
                     generateSimpleWriterInnerClassName(className, field.getName()),
                     Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC
             );
+
+            // Declare writer as nest member so it can access private fields
+            if (!isNestMember) {
+                cv.visitNestMember(writerClassName);
+            }
 
             // Generate writer inner class bytecode
             byte[] writerBytes = InnerClassGenerator.generate(
@@ -72,6 +86,11 @@ public class AccessorWriterClassVisitor extends ClassVisitor {
                     generateSimpleReaderInnerClassName(className, field.getName()),
                     Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC
             );
+
+            // Declare reader as nest member so it can access private fields
+            if (!isNestMember) {
+                cv.visitNestMember(readerClassName);
+            }
 
             // Generate reader inner class bytecode
             byte[] readerBytes = InnerClassGenerator.generateReader(
